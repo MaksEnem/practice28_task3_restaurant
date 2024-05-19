@@ -16,8 +16,7 @@ void waitingTime(int& inNumber,  int inTime1, int inTime2)
 {
     blockListDishes.lock();
     inNumber = rand() % inTime2 + inTime1;
-    blockListDishes.unlock();
-    std::cout << "inTime3: " << inNumber << " " << std::endl; 
+    blockListDishes.unlock();    
 }
 
 void printDish(int& inOrder)
@@ -46,9 +45,9 @@ void printDish(int& inOrder)
 
 void onlineOrder(int inTime)
 {
-    waitingTime(inTime, 5, 6);
+    //waitingTime(inTime, 5, 6);
     //std::cout << "inTime2: " <<  inTime << " " << std::endl;
-    std::this_thread::sleep_for(std::chrono::milliseconds(inTime));
+    std::this_thread::sleep_for(std::chrono::seconds(inTime));
 
 }
 
@@ -59,45 +58,68 @@ void listOfDishes(std::vector<int>& inListDishes, int& inOrder)
     blockListDishes.unlock();
 }
 
+
+void listOfCooking(std::vector<int>& inListDishes, std::vector<int>& inMealDeliveryList, int inTime)
+{    
+    blockListDishes.lock();
+    std::cout << "The food is being prepared: ";
+    printDish(inListDishes.back());
+    inMealDeliveryList.push_back(inListDishes.back());
+    inListDishes.pop_back();
+    blockListDishes.unlock();
+    std::this_thread::sleep_for(std::chrono::seconds(inTime));
+    std::cout << "Dish prepared: ";
+    printDish(inMealDeliveryList.back());
+}
+
+void listMealDelivery(std::vector<int>& inMealDeliveryList, int& inCount)
+{
+    std::this_thread::sleep_for(std::chrono::seconds(30));
+    std::cout << "The following dishes are delivered: ";
+
+    for (int i = 0; i < inMealDeliveryList.size(); ++i)
+    {
+        printDish(inMealDeliveryList[i]);
+    }
+    inMealDeliveryList.clear();
+    ++inCount;
+}
+
 int main()
 {
     std::srand(time(NULL));
 
     int order;
     int time;
+    int count = 0;
     std::vector<int> listDishes;
-    
+    std::vector<int> mealDeliveryList;
 
    
 
-    for (int i = 0; i < 10; ++i)
+    while (true)
     {
         waitingTime(order, 0, 5);
         waitingTime(time, 5, 6);
-        std::cout << "inTime1: " << time << " " << std::endl;
+        
         std::cout << "The waiter took the order: ";
         printDish(order);
         std::thread orderFood(onlineOrder, time);
-
         orderFood.join();
 
         std::thread dish(listOfDishes, std::ref(listDishes), std::ref(order));
-
         dish.join();
-       
+
+        waitingTime(time, 5, 11);
+        std::thread cooking(listOfCooking, std::ref(listDishes), std::ref(mealDeliveryList), time);        
+        cooking.detach();
         
+        std::thread mealDelivery(listMealDelivery, std::ref(mealDeliveryList), std::ref(count));
+        mealDelivery.detach();
        
-    }
-    
-
-
-    
-    for (int i = 0; i < listDishes.size(); ++i)
+        if (count == 9)
         {
-            std::cout << listDishes[i] << " ";
+            return 0;
         }
-
-    
-    
-    return 0;
+    }   
 }
